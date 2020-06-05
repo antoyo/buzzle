@@ -49,7 +49,7 @@ use chessground::{
     DrawBrush,
     DrawShape,
     Ground,
-    GroundMsg::{self, SetOrientation, SetPockets, SetPos, UserDrop, UserMove},
+    GroundMsg::{SetOrientation, SetPockets, SetPos, UserDrop, UserMove},
     Pos,
 };
 use gtk::{
@@ -96,7 +96,6 @@ use self::Msg::*;
 
 #[derive(Msg)]
 pub enum Msg {
-    Flip,
     ImportPGN,
     MovePlayed(Square, Square, Option<Role>),
     NextPuzzle,
@@ -151,7 +150,6 @@ impl Widget for Win {
 
     fn update(&mut self, event: Msg) {
         match event {
-            Flip => self.ground.emit(GroundMsg::Flip),
             ImportPGN => {
                 let dialog = FileChooserDialog::with_buttons(
                     Some("Select a PGN file to import"),
@@ -297,11 +295,6 @@ impl Widget for Win {
                         icon_name: Some("document-open"),
                         label: Some("Import PGN files"),
                         clicked => ImportPGN,
-                    },
-                    gtk::ToolButton {
-                        icon_name: Some("object-flip-vertical"),
-                        label: Some("Flip board"),
-                        clicked => Flip,
                     },
                     gtk::ToolButton {
                         icon_name: Some("application-exit"),
