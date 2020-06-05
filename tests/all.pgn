@@ -1,0 +1,19 @@
+[FEN "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4 | rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
+
+1. Qxf7#
+
+[FEN "1r4k1/3R1ppp/8/8/8/8/1r3PPP/3R2K1 w - - 0 1 | rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
+
+1. Rd8+ Rxd8 2. Rxd8#
+
+[FEN "rnbqkbnr/1pppp1pp/p4p2/8/2B1P3/8/PPPP1PPP/RNBQK1NR/Pp w KQkq - 0 3 | rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3"]
+
+1. P@f7
+
+[FEN "rnbq1r1k/ppp1bppp/3p3N/8/2B1n3/8/PPPP1PPP/RNBQ1RK1/R w - - 2 8 | rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3"]
+
+1. R@g8+ Rxg8 2. Nxf7#
+
+[FEN "rnbqkb1r/pppppppp/8/8/3Pn3/N4P2/PPP1P1PP/R1BQKBNR/p b KQkq - 0 3 | rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3"]
+
+1... P@f2

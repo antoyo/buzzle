@@ -35,9 +35,7 @@ extern crate encoding_rs;
 extern crate gdk;
 extern crate gtk;
 extern crate pgn_reader;
-#[macro_use]
 extern crate relm;
-#[macro_use]
 extern crate relm_derive;
 extern crate shakmaty;
 
@@ -79,7 +77,7 @@ use pgn_reader::{
     Visitor,
 };
 use relm::{Relm, Widget, timeout};
-use relm_derive::widget;
+use relm_derive::{Msg, widget};
 use shakmaty::{
     Board,
     fen::Fen,
@@ -190,6 +188,8 @@ impl Widget for Win {
             },
             NextPuzzle => {
                 self.model.current_move = 0;
+                self.model.can_play = true;
+                self.model.text = "";
                 self.model.current_puzzle = min(self.model.current_puzzle + 1, self.model.puzzles.len() - 1);
                 self.show_position();
             },
@@ -220,6 +220,8 @@ impl Widget for Win {
             },
             PreviousPuzzle => {
                 self.model.current_move = 0;
+                self.model.can_play = true;
+                self.model.text = "";
                 if self.model.current_puzzle > 0 {
                     self.model.current_puzzle -= 1;
                 }
@@ -274,7 +276,7 @@ impl Widget for Win {
                             self.model.text = "Success";
                         }
                         else {
-                            timeout(self.model.relm.stream(), 1000, || PlayOpponentMove);
+                            timeout(self.model.relm.stream(), 500, || PlayOpponentMove);
                         }
                     }
                     else {
