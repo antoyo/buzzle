@@ -124,7 +124,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "chessground"
 version = "0.9.0"
-source = "git+https://github.com/antoyo/rust-chessground#e501c30c3e0ca3bdc30e9f94b8e940e0a64e7929"
+source = "git+https://github.com/antoyo/rust-chessground#e8cc78c270ba45ff6473314ee21d499e05c8b36c"
 dependencies = [
  "cairo-rs 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gdk 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",

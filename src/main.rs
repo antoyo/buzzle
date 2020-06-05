@@ -51,7 +51,7 @@ use chessground::{
     DrawBrush,
     DrawShape,
     Ground,
-    GroundMsg::{self, SetBoard, SetPockets, SetPos, UserDrop, UserMove},
+    GroundMsg::{self, SetOrientation, SetPockets, SetPos, UserDrop, UserMove},
     Pos,
 };
 use gtk::{
@@ -82,7 +82,6 @@ use relm::{Relm, Widget, timeout};
 use relm_derive::widget;
 use shakmaty::{
     Board,
-    Chess,
     fen::Fen,
     FromSetup,
     Material,
@@ -199,6 +198,7 @@ impl Widget for Win {
                     return;
                 }
 
+                self.model.text = "";
                 let legals = self.model.current_position.legals();
                 let mov = Move::Put {
                     role: piece.role,
@@ -253,6 +253,7 @@ impl Widget for Win {
             let pos = Pos::new(&puzzle.position);
             let turn = puzzle.position.turn();
             self.ground.emit(SetPos(pos));
+            self.ground.emit(SetOrientation(turn));
             self.ground.emit(SetPockets(puzzle.position.pockets().cloned().unwrap_or(Material::new()), turn));
         }
     }
