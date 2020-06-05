@@ -25,6 +25,9 @@
  * Have puzzles where the solution is to survive the longest (when most leads to checkmate).
  *
  * Use BFEN in the PGN: https://bughousedb.com/Lieven_BPGN_Standard.txt
+ *
+ * If losing a piece before check-mating would make your partner's opponent win, don't consider it
+ * as a solution.
  */
 
 extern crate chessground;
@@ -48,9 +51,8 @@ use chessground::{
     DrawBrush,
     DrawShape,
     Ground,
-    GroundMsg::{self, SetPos, UserMove},
+    GroundMsg::{self, SetBoard, SetPockets, SetPos, UserDrop, UserMove},
     Pos,
-    SetBoard,
 };
 use gtk::{
     ButtonExt,
@@ -83,8 +85,11 @@ use shakmaty::{
     Chess,
     fen::Fen,
     FromSetup,
+    Material,
     Move,
+    Piece,
     Position,
+    position::Bughouse,
     Role,
     Setup,
     Square,
@@ -98,6 +103,7 @@ pub enum Msg {
     ImportPGN,
     MovePlayed(Square, Square, Option<Role>),
     NextPuzzle,
+    PieceDrop(Piece, Square),
     PlayOpponentMove,
     PreviousPuzzle,
     Quit,
@@ -112,7 +118,7 @@ struct TrainingPosition {
 pub struct Model {
     can_play: bool,
     current_move: usize,
-    current_position: Chess,
+    current_position: Bughouse,
     current_puzzle: usize,
     puzzles: Vec<Puzzle>,
     relm: Relm<Win>,
@@ -138,7 +144,7 @@ impl Widget for Win {
         Model {
             can_play: true,
             current_move: 0,
-            current_position: Chess::default(),
+            current_position: Bughouse::default(),
             current_puzzle: 0,
             puzzles: vec![],
             relm: relm.clone(),
@@ -156,7 +162,8 @@ impl Widget for Win {
                     FileChooserAction::Open,
                     &[("Import", ResponseType::Ok), ("Cancel", ResponseType::Cancel)],
                 );
-                dialog.set_current_folder(env::current_dir().expect("current dir"));
+                let dir = env::current_dir().expect("current dir").join("tests");
+                dialog.set_current_folder(dir);
                 if dialog.run() == ResponseType::Ok {
                     for filename in dialog.get_filenames() {
                         if let Err(error) = self.import_file(&filename) {
@@ -180,33 +187,26 @@ impl Widget for Win {
                     mov.promotion() == promotion
                 });
 
-                if let Some(puzzle) = self.model.puzzles.get(self.model.current_puzzle) {
-                    if let Some(current_move) = puzzle.moves.get(self.model.current_move) {
-                        if let Some(mov) = mov {
-                            if mov == current_move {
-                                self.model.current_move += 1;
-                                self.model.current_position.play_unchecked(mov);
-                                self.ground.emit(SetPos(Pos::new(&self.model.current_position)));
-                                self.model.can_play = false;
-
-                                if self.model.current_move == puzzle.moves.len() {
-                                    self.model.text = "Success";
-                                }
-                                else {
-                                    timeout(self.model.relm.stream(), 1000, || PlayOpponentMove);
-                                }
-                            }
-                            else {
-                                self.model.text = "Wrong answer";
-                            }
-                        }
-                    }
-                }
+                self.try_move(mov);
             },
             NextPuzzle => {
                 self.model.current_move = 0;
                 self.model.current_puzzle = min(self.model.current_puzzle + 1, self.model.puzzles.len() - 1);
                 self.show_position();
+            },
+            PieceDrop(piece, to) => {
+                if !self.model.can_play {
+                    return;
+                }
+
+                let legals = self.model.current_position.legals();
+                let mov = Move::Put {
+                    role: piece.role,
+                    to,
+                };
+                if legals.contains(&mov) {
+                    self.try_move(Some(&mov));
+                }
             },
             PlayOpponentMove => {
                 if let Some(puzzle) = self.model.puzzles.get(self.model.current_puzzle) {
@@ -250,7 +250,37 @@ impl Widget for Win {
     fn show_position(&mut self) {
         if let Some(puzzle) = self.model.puzzles.get(self.model.current_puzzle) {
             self.model.current_position = puzzle.position.clone();
-            self.ground.emit(SetBoard(puzzle.position.board().clone()));
+            let pos = Pos::new(&puzzle.position);
+            let turn = puzzle.position.turn();
+            self.ground.emit(SetPos(pos));
+            self.ground.emit(SetPockets(puzzle.position.pockets().cloned().unwrap_or(Material::new()), turn));
+        }
+    }
+
+    fn try_move(&mut self, mov: Option<&Move>) {
+        if let Some(puzzle) = self.model.puzzles.get(self.model.current_puzzle) {
+            if let Some(current_move) = puzzle.moves.get(self.model.current_move) {
+                if let Some(mov) = mov {
+                    if mov == current_move {
+                        self.model.current_move += 1;
+                        let turn = self.model.current_position.turn();
+                        self.model.current_position.play_unchecked(mov);
+                        self.ground.emit(SetPos(Pos::new(&self.model.current_position)));
+                        self.ground.emit(SetPockets(self.model.current_position.pockets().cloned().unwrap_or(Material::new()), turn));
+                        self.model.can_play = false;
+
+                        if self.model.current_move == puzzle.moves.len() {
+                            self.model.text = "Success";
+                        }
+                        else {
+                            timeout(self.model.relm.stream(), 1000, || PlayOpponentMove);
+                        }
+                    }
+                    else {
+                        self.model.text = "Wrong answer";
+                    }
+                }
+            }
         }
     }
 
@@ -279,6 +309,7 @@ impl Widget for Win {
                 #[name="ground"]
                 Ground {
                     UserMove(orig, dest, promotion) => MovePlayed(orig, dest, promotion),
+                    UserDrop(piece, to) => PieceDrop(piece, to),
                 },
                 gtk::ButtonBox {
                     gtk::Button {
@@ -302,18 +333,18 @@ impl Widget for Win {
 
 struct Puzzle {
     moves: Vec<Move>,
-    position: Chess,
+    position: Bughouse,
 }
 
 struct FENImporter {
-    current_position: Chess,
+    current_position: Bughouse,
     puzzles: Vec<Puzzle>,
 }
 
 impl FENImporter {
     fn new() -> Self {
         Self {
-            current_position: Chess::default(),
+            current_position: Bughouse::default(),
             puzzles: vec![],
         }
     }
@@ -335,10 +366,9 @@ impl Visitor for FENImporter {
                 Some(index) => {
                     let player = &fen[..index - 1];
                     let partner = &fen[index + 1..];
-                    println!("{:?}", String::from_utf8_lossy(player));
                     match Fen::from_ascii(player) {
                         Ok(fen) => {
-                            match Chess::from_setup(&fen) {
+                            match Bughouse::from_setup(&fen) {
                                 Ok(setup) => {
                                     self.current_position = setup.clone();
                                     self.puzzles.push(Puzzle {

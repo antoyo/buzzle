@@ -124,7 +124,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "chessground"
 version = "0.9.0"
-source = "git+https://github.com/antoyo/rust-chessground#7b012881dde4561d4c62284cbfcf1e07938caf8d"
+source = "git+https://github.com/antoyo/rust-chessground#e501c30c3e0ca3bdc30e9f94b8e940e0a64e7929"
 dependencies = [
  "cairo-rs 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gdk 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1294,7 +1294,7 @@ dependencies = [
 [[package]]
 name = "shakmaty"
 version = "0.16.3"
-source = "git+https://github.com/antoyo/shakmaty#bc234f002791e163f400abbdfa0d7883294433c6"
+source = "git+https://github.com/antoyo/shakmaty#d1fee0cf0d6e01d074c749cbc24740630ef47aba"
 dependencies = [
  "arrayvec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
