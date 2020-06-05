@@ -76,7 +76,7 @@ use pgn_reader::{
     SanPlus,
     Visitor,
 };
-use relm::Widget;
+use relm::{Relm, Widget, timeout};
 use relm_derive::widget;
 use shakmaty::{
     Board,
@@ -98,6 +98,7 @@ pub enum Msg {
     ImportPGN,
     MovePlayed(Square, Square, Option<Role>),
     NextPuzzle,
+    PlayOpponentMove,
     PreviousPuzzle,
     Quit,
 }
@@ -109,10 +110,12 @@ struct TrainingPosition {
 }
 
 pub struct Model {
+    can_play: bool,
     current_move: usize,
     current_position: Chess,
     current_puzzle: usize,
     puzzles: Vec<Puzzle>,
+    relm: Relm<Win>,
     text: &'static str,
 }
 
@@ -131,12 +134,14 @@ impl PartialEq<DrawShape> for Shape {
 
 #[widget]
 impl Widget for Win {
-    fn model() -> Model {
+    fn model(relm: &Relm<Self>, _: ()) -> Model {
         Model {
+            can_play: true,
             current_move: 0,
             current_position: Chess::default(),
             current_puzzle: 0,
             puzzles: vec![],
+            relm: relm.clone(),
             text: "",
         }
     }
@@ -164,8 +169,11 @@ impl Widget for Win {
                 dialog.destroy();
             },
             MovePlayed(orig, dest, promotion) => {
+                if !self.model.can_play {
+                    return;
+                }
+
                 self.model.text = "";
-                let current_position = &self.model.current_position;
                 let legals = self.model.current_position.legals();
                 let mov = legals.iter().find(|mov| {
                     mov.from() == Some(orig) && mov.to() == dest &&
@@ -179,9 +187,13 @@ impl Widget for Win {
                                 self.model.current_move += 1;
                                 self.model.current_position.play_unchecked(mov);
                                 self.ground.emit(SetPos(Pos::new(&self.model.current_position)));
+                                self.model.can_play = false;
 
                                 if self.model.current_move == puzzle.moves.len() {
                                     self.model.text = "Success";
+                                }
+                                else {
+                                    timeout(self.model.relm.stream(), 1000, || PlayOpponentMove);
                                 }
                             }
                             else {
@@ -195,6 +207,16 @@ impl Widget for Win {
                 self.model.current_move = 0;
                 self.model.current_puzzle = min(self.model.current_puzzle + 1, self.model.puzzles.len() - 1);
                 self.show_position();
+            },
+            PlayOpponentMove => {
+                if let Some(puzzle) = self.model.puzzles.get(self.model.current_puzzle) {
+                    if let Some(current_move) = puzzle.moves.get(self.model.current_move) {
+                        self.model.can_play = true;
+                        self.model.current_move += 1;
+                        self.model.current_position.play_unchecked(current_move);
+                        self.ground.emit(SetPos(Pos::new(&self.model.current_position)));
+                    }
+                }
             },
             PreviousPuzzle => {
                 self.model.current_move = 0;
@@ -218,6 +240,9 @@ impl Widget for Win {
         reader.read_all(&mut importer).map_err(|_| "Cannot parse PGN file")?;
         self.model.puzzles = importer.puzzles;
         self.model.current_puzzle = 0;
+        self.model.current_move = 0;
+        self.model.can_play = true;
+        self.model.text = "";
         self.show_position();
         Ok(())
     }
@@ -281,12 +306,14 @@ struct Puzzle {
 }
 
 struct FENImporter {
+    current_position: Chess,
     puzzles: Vec<Puzzle>,
 }
 
 impl FENImporter {
     fn new() -> Self {
         Self {
+            current_position: Chess::default(),
             puzzles: vec![],
         }
     }
@@ -313,6 +340,7 @@ impl Visitor for FENImporter {
                         Ok(fen) => {
                             match Chess::from_setup(&fen) {
                                 Ok(setup) => {
+                                    self.current_position = setup.clone();
                                     self.puzzles.push(Puzzle {
                                         moves: vec![],
                                         position: setup,
@@ -337,8 +365,11 @@ impl Visitor for FENImporter {
 
     fn san(&mut self, san_plus: SanPlus) {
         if let Some(puzzle) = self.puzzles.last_mut() {
-            match san_plus.san.to_move(&puzzle.position) {
-                Ok(mov) => puzzle.moves.push(mov),
+            match san_plus.san.to_move(&self.current_position) {
+                Ok(mov) => {
+                    self.current_position.play_unchecked(&mov);
+                    puzzle.moves.push(mov);
+                },
                 Err(error) => eprintln!("Error playing move: {:?}", error),
             }
         }
