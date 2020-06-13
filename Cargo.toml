@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 chessground = { git = "https://github.com/antoyo/rust-chessground" }
-#chess_pgn_parser = "0.1.2"
 encoding_rs = "0.8.17"
 encoding_rs_io = "0.1.6"
 gdk = "0.12.0"
